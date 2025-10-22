@@ -63,29 +63,33 @@ src/
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Firebase project
 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd crewvar/frontend
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Environment Setup**
+
    ```bash
    cp .env.example .env.local
    ```
-   
+
    Fill in your Firebase configuration in `.env.local`:
+
    ```env
    VITE_FIREBASE_API_KEY=your_api_key
    VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
@@ -97,6 +101,7 @@ src/
    ```
 
 4. **Start development server**
+
    ```bash
    npm run dev
    ```
@@ -125,6 +130,7 @@ The build artifacts will be stored in the `dist/` directory.
 ### Deployment
 
 The application is configured for deployment on:
+
 - **Vercel** (recommended)
 - **Netlify**
 - **Firebase Hosting**
@@ -156,9 +162,97 @@ The application is configured for deployment on:
 2. Set up Cloud Storage
 3. Configure security rules
 
+## 📱 Mobile App Support
+
+CrewVar is fully configured for mobile app deployment using Capacitor:
+
+### Mobile Platforms
+
+- **Android** - Native Android app support
+- **iOS** - Native iOS app support (requires macOS)
+- **PWA** - Progressive Web App support
+
+### Mobile Features
+
+- **Push Notifications** - Real-time notifications
+- **Camera Integration** - Photo capture and gallery access
+- **File System Access** - Local file management
+- **Device Information** - Platform detection and optimization
+- **Network Status** - Offline/online detection
+- **Status Bar Control** - Native status bar styling
+- **Keyboard Handling** - Mobile keyboard optimization
+
+### Mobile Development
+
+#### Prerequisites
+
+- **Android**: Android Studio, Java JDK 17+
+- **iOS**: macOS, Xcode, Apple Developer Account
+- **General**: Node.js 18+, npm
+
+#### Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Setup environment
+cp env.example .env.local
+# Edit .env.local with your Firebase config
+
+# Build web app
+npm run build
+
+# Add mobile platforms
+npm run cap:add:android
+npm run cap:add:ios
+
+# Sync Capacitor
+npm run cap:sync
+
+# Open in IDEs
+npm run cap:open:android  # Android Studio
+npm run cap:open:ios      # Xcode
+```
+
+#### Available Scripts
+
+- `npm run cap:sync` - Sync web app to mobile platforms
+- `npm run cap:open:android` - Open Android Studio
+- `npm run cap:open:ios` - Open Xcode
+- `npm run cap:build:android` - Build and open Android
+- `npm run cap:build:ios` - Build and open iOS
+- `npm run cap:run:android` - Run on Android device
+- `npm run cap:run:ios` - Run on iOS device
+
+### App Store Deployment
+
+#### Android (Google Play Store)
+
+1. Build signed APK/AAB in Android Studio
+2. Upload to Google Play Console
+3. Complete store listing with screenshots
+4. Submit for review
+
+#### iOS (Apple App Store)
+
+1. Archive app in Xcode
+2. Upload to App Store Connect
+3. Complete store listing with screenshots
+4. Submit for review
+
+### Mobile Testing
+
+- **Android**: Use Android Studio emulator or physical device
+- **iOS**: Use Xcode simulator or physical device
+- **PWA**: Test in mobile browsers
+
+For detailed mobile setup instructions, see [Mobile Setup Guide](docs/mobile-setup-guide.md).
+
 ## 📱 Features Overview
 
 ### Authentication
+
 - Email/password registration and login
 - Google OAuth integration
 - Email verification
@@ -166,6 +260,7 @@ The application is configured for deployment on:
 - Protected routes and guards
 
 ### User Management
+
 - Comprehensive user profiles
 - Ship assignments and department roles
 - Profile photo uploads
@@ -173,6 +268,7 @@ The application is configured for deployment on:
 - Privacy settings
 
 ### Real-time Chat
+
 - Instant messaging between crew members
 - File and image sharing
 - Message status indicators
@@ -180,6 +276,7 @@ The application is configured for deployment on:
 - Message history
 
 ### Connections
+
 - Send and receive connection requests
 - Accept/reject connections
 - View connection status
@@ -187,6 +284,7 @@ The application is configured for deployment on:
 - Connection management
 
 ### Notifications
+
 - Real-time notifications
 - Email notifications
 - Push notifications (future)
@@ -194,6 +292,7 @@ The application is configured for deployment on:
 - Admin notifications
 
 ### Admin Panel
+
 - User management
 - Content moderation
 - Analytics dashboard
@@ -203,6 +302,7 @@ The application is configured for deployment on:
 ## 🎨 Design System
 
 ### Colors
+
 - Primary: `#069B93` (Teal)
 - Secondary: `#058a7a` (Dark Teal)
 - Accent: `#047a6a` (Darker Teal)
@@ -211,11 +311,13 @@ The application is configured for deployment on:
 - Error: `#EF4444` (Red)
 
 ### Typography
+
 - Headings: Inter font family
 - Body: System font stack
 - Code: JetBrains Mono
 
 ### Spacing
+
 - Consistent spacing scale using Tailwind CSS
 - Mobile-first responsive design
 - Accessible color contrast ratios
@@ -277,3 +379,5 @@ For support, email support@crewvar.com or create an issue in the repository.
 ---
 
 Built with ❤️ for the cruise ship community
+#   c r e w c r e x  
+ 
