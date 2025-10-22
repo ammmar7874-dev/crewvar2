@@ -1,0 +1,357 @@
+{
+  "summary": {
+    "total": 49,
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0
+  },
+  "details": {
+    "timestamp": "2025-10-19T10:34:02.127Z",
+    "platform": "iOS",
+    "tests": [
+      {
+        "name": "File Check: ios/App/App/Info.plist",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.134Z"
+      },
+      {
+        "name": "File Check: ios/App/App.xcodeproj/project.pbxproj",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.135Z"
+      },
+      {
+        "name": "File Check: capacitor.config.ts",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.135Z"
+      },
+      {
+        "name": "File Check: src/components/auth/SignupForm.tsx",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.135Z"
+      },
+      {
+        "name": "File Check: src/components/auth/LoginForm.tsx",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.136Z"
+      },
+      {
+        "name": "File Check: src/context/AuthContextFirebase.tsx",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.136Z"
+      },
+      {
+        "name": "File Check: src/utils/sessionManager.ts",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.136Z"
+      },
+      {
+        "name": "File Check: src/firebase/auth.ts",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.137Z"
+      },
+      {
+        "name": "File Check: src/firebase/config.ts",
+        "status": "PASS",
+        "message": "File exists",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.137Z"
+      },
+      {
+        "name": "iOS Config: CFBundleDisplayName",
+        "status": "PASS",
+        "message": "Key found in Info.plist",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.143Z"
+      },
+      {
+        "name": "iOS Config: CFBundleIdentifier",
+        "status": "PASS",
+        "message": "Key found in Info.plist",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.144Z"
+      },
+      {
+        "name": "iOS Config: LSRequiresIPhoneOS",
+        "status": "PASS",
+        "message": "Key found in Info.plist",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.145Z"
+      },
+      {
+        "name": "Capacitor Config: App ID",
+        "status": "PASS",
+        "message": "Correct app ID configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.145Z"
+      },
+      {
+        "name": "Capacitor Config: Mixed Content",
+        "status": "PASS",
+        "message": "Mixed content enabled",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.145Z"
+      },
+      {
+        "name": "SignupForm: useForm",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.147Z"
+      },
+      {
+        "name": "SignupForm: yupResolver",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.147Z"
+      },
+      {
+        "name": "SignupForm: registerValidationSchema",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.148Z"
+      },
+      {
+        "name": "SignupForm: showPassword",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.148Z"
+      },
+      {
+        "name": "SignupForm: toast.success",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.149Z"
+      },
+      {
+        "name": "SignupForm: navigate(\"/auth/login\")",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.149Z"
+      },
+      {
+        "name": "LoginForm: rememberMe",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.149Z"
+      },
+      {
+        "name": "LoginForm: getRememberedCredentials",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.150Z"
+      },
+      {
+        "name": "LoginForm: saveRememberedCredentials",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.150Z"
+      },
+      {
+        "name": "LoginForm: showPassword",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.150Z"
+      },
+      {
+        "name": "LoginForm: clearRememberedCredentials",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.150Z"
+      },
+      {
+        "name": "AuthContext: saveUserSession",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "AuthContext: getUserSession",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "AuthContext: clearUserSession",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "AuthContext: Capacitor",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "AuthContext: sessionRestoredRef",
+        "status": "PASS",
+        "message": "Feature implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "SessionManager: saveUserSession",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "SessionManager: getUserSession",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.151Z"
+      },
+      {
+        "name": "SessionManager: clearUserSession",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "SessionManager: hasValidSession",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "SessionManager: updateSessionTimestamp",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "SessionManager: refreshStoredToken",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "Firebase Config: VITE_FIREBASE_API_KEY",
+        "status": "PASS",
+        "message": "Environment variable configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "Firebase Config: VITE_FIREBASE_AUTH_DOMAIN",
+        "status": "PASS",
+        "message": "Environment variable configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "Firebase Config: VITE_FIREBASE_PROJECT_ID",
+        "status": "PASS",
+        "message": "Environment variable configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.152Z"
+      },
+      {
+        "name": "Firebase Config: VITE_FIREBASE_STORAGE_BUCKET",
+        "status": "PASS",
+        "message": "Environment variable configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Firebase Config: VITE_FIREBASE_MESSAGING_SENDER_ID",
+        "status": "PASS",
+        "message": "Environment variable configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Firebase Config: VITE_FIREBASE_APP_ID",
+        "status": "PASS",
+        "message": "Environment variable configured",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Firebase Config: Singleton",
+        "status": "PASS",
+        "message": "Singleton pattern implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Auth Module: signInWithEmail",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Auth Module: signUpWithEmail",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Auth Module: signOutUser",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Auth Module: resetPassword",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Auth Module: updateUserProfile",
+        "status": "PASS",
+        "message": "Function implemented",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      },
+      {
+        "name": "Auth Module: APK Adaptations",
+        "status": "PASS",
+        "message": "APK build adaptations present",
+        "details": {},
+        "timestamp": "2025-10-19T10:34:02.153Z"
+      }
+    ]
+  }
+}

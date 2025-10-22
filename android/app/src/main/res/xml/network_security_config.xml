@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">firebaseapp.com</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <domain includeSubdomains="true">accounts.google.com</domain>
+        <domain includeSubdomains="true">oauth2.googleapis.com</domain>
+    </domain-config>
+    
+    <!-- Allow cleartext traffic for development -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+

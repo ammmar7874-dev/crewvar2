@@ -14,6 +14,7 @@ import { DashboardLayout } from "../../layout/DashboardLayout";
 import {
   getCruiseLines,
   getShips,
+  getShipsByCruiseLine,
   getCrewMembers,
   sendConnectionRequest,
   getDepartments,
@@ -110,7 +111,7 @@ const CustomDropdown = ({
       {/* Input Field */}
       <div
         className={`
-                    w-full px-3 py-3 border rounded-lg cursor-pointer
+                    w-full px-3 border rounded-lg cursor-pointer min-h-[48px] flex items-center
                     ${
                       disabled
                         ? "bg-gray-100 cursor-not-allowed border-gray-200 text-gray-500"
@@ -120,14 +121,14 @@ const CustomDropdown = ({
                 `}
         onClick={handleInputClick}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
           <span
-            className={`${selectedOption ? "text-gray-900" : "text-gray-500"}`}
+            className={`${selectedOption ? "text-gray-900" : "text-gray-500"} text-sm leading-5 truncate max-w-[85%]`}
           >
             {selectedOption ? selectedOption.name : placeholder}
           </span>
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${
+            className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${
               isOpen ? "rotate-180" : ""
             }`}
             fill="none"
@@ -146,7 +147,7 @@ const CustomDropdown = ({
 
       {/* Dropdown Menu */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg top-full left-0 overflow-hidden">
           {/* Search Input */}
           <div className="p-2 border-b border-gray-200">
             <input
@@ -161,7 +162,7 @@ const CustomDropdown = ({
           </div>
 
           {/* Options List */}
-          <div className="overflow-y-auto" style={{ maxHeight }}>
+          <div className="overflow-y-auto overscroll-contain" style={{ maxHeight }}>
             {/* All Option */}
             <div
               className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors ${
@@ -209,11 +210,24 @@ export const ExploreShips = () => {
   const queryClient = useQueryClient();
   const [selectedCruiseLine, setSelectedCruiseLine] = useState<string>("");
   const [selectedShip, setSelectedShip] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchInput, setSearchInput] = useState<string>("");
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
     {}
   );
   const observerRef = useRef<HTMLDivElement>(null);
+  const uniqueLengthRef = useRef<number>(0);
+  const [stopInfinite, setStopInfinite] = useState<boolean>(false);
+
+  // Debounce user typing for search input (500ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   // Fetch cruise lines
   const { data: cruiseLines = [], isLoading: cruiseLinesLoading } = useQuery({
@@ -305,7 +319,7 @@ export const ExploreShips = () => {
   const { data: shipsByCruiseLine = [], isLoading: shipsByCruiseLineLoading } =
     useQuery({
       queryKey: ["shipsByCruiseLine", selectedCruiseLineId],
-      queryFn: () => getShips(),
+      queryFn: () => getShipsByCruiseLine(selectedCruiseLineId),
       enabled: !!selectedCruiseLineId,
     });
 
@@ -418,10 +432,11 @@ export const ExploreShips = () => {
     hasNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ["crewMembers", selectedShipId, searchQuery], // Include searchQuery in key
+    queryKey: ["crewMembers", selectedShipId, searchQuery, selectedRole], // Include searchQuery in key
     queryFn: ({ pageParam = 0 }) =>
       getCrewMembers({
         shipId: selectedShipId || undefined,
+        roleId: selectedRole || undefined,
         page: pageParam,
         limit: 20,
         currentUserId: currentUser?.uid,
@@ -436,8 +451,41 @@ export const ExploreShips = () => {
   // Flatten all crew data from all pages
   const allCrew = useMemo(() => {
     if (!crewData?.pages) return [];
-    return crewData.pages.flatMap((page: any) => page.crew || []);
+    const combined = crewData.pages.flatMap((page: any) => page.crew || []);
+    const uniqueMap = new Map<string, any>();
+    for (const item of combined) {
+      const keyCandidate =
+        item?.id ||
+        item?.userId ||
+        item?.uid ||
+        (typeof item?.email === "string" ? item.email.toLowerCase() : undefined) ||
+        (item?.displayName && item?.currentShipId
+          ? `${String(item.displayName).trim().toLowerCase()}|${String(
+              item.currentShipId
+            )}`
+          : undefined);
+      if (keyCandidate && !uniqueMap.has(String(keyCandidate))) {
+        uniqueMap.set(String(keyCandidate), item);
+      } else if (!keyCandidate) {
+        const fallback = `${String(item?.displayName || "").trim().toLowerCase()}|${String(
+          item?.currentShipId || ""
+        )}|${uniqueMap.size}`;
+        if (!uniqueMap.has(fallback)) uniqueMap.set(fallback, item);
+      }
+    }
+    return Array.from(uniqueMap.values());
   }, [crewData]);
+
+  // Determine if new pages are adding any unique items
+  useEffect(() => {
+    const currentLen = Array.isArray(allCrew) ? allCrew.length : 0;
+    const hadIncrease = currentLen > uniqueLengthRef.current;
+    uniqueLengthRef.current = currentLen;
+    // Stop infinite scroll if no increase and API still reports there may be next page
+    // Also stop while searching
+    const hasActiveSearch = !!searchQuery?.trim();
+    setStopInfinite(!hadIncrease || hasActiveSearch);
+  }, [allCrew, searchQuery]);
 
   // Filter crew members based on selections (client-side filtering)
   const filteredCrew = useMemo(() => {
@@ -481,9 +529,17 @@ export const ExploreShips = () => {
 
   // Infinite scroll observer
   useEffect(() => {
+    // Disable observing if we shouldn't fetch more
+    if (stopInfinite) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        if (
+          entries[0].isIntersecting &&
+          hasNextPage &&
+          !isFetchingNextPage &&
+          !stopInfinite
+        ) {
           fetchNextPage();
         }
       },
@@ -495,7 +551,7 @@ export const ExploreShips = () => {
     }
 
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, stopInfinite]);
 
   // Reset ship selection when cruise line changes
   const handleCruiseLineChange = (cruiseLineName: string) => {
@@ -525,9 +581,18 @@ export const ExploreShips = () => {
     }
   };
 
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedCruiseLine("");
+    setSelectedShip("");
+    setSelectedRole("");
+    setSearchQuery("");
+    setSearchInput("");
+  };
+
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 overflow-x-hidden">
         {/* Mobile Header */}
         <div className="bg-teal-600 text-white p-3 sm:p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
@@ -587,8 +652,8 @@ export const ExploreShips = () => {
                 <input
                   type="text"
                   placeholder="Search by name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none text-base"
                 />
               </div>
@@ -621,11 +686,40 @@ export const ExploreShips = () => {
                 label="Ship"
                 maxHeight="250px"
               />
+
+              {/* Role Selection */}
+              <CustomDropdown
+                value={selectedRole}
+                onChange={setSelectedRole}
+                options={allRoles || []}
+                placeholder="All Roles"
+                disabled={false}
+                label="Role"
+                maxHeight="250px"
+              />
+
+              {/* Clear Filters Button */}
+              {(selectedCruiseLine ||
+                selectedShip ||
+                selectedRole ||
+                searchQuery) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-300"
+                >
+                  Clear All Filters
+                </button>
+              )}
             </div>
           </div>
 
           {/* Loading State */}
-          {(cruiseLinesLoading || shipsLoading || (crewLoading && (!!searchQuery?.trim() || !!selectedShipId || !!selectedCruiseLine))) && (
+          {(cruiseLinesLoading ||
+            shipsLoading ||
+            (crewLoading &&
+              (!!searchQuery?.trim() ||
+                !!selectedShipId ||
+                !!selectedCruiseLine || !!selectedRole))) && (
             <div className="bg-white rounded-lg shadow-sm border p-4">
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
@@ -637,18 +731,195 @@ export const ExploreShips = () => {
           )}
 
           {/* Crew Results - Only show when not loading initial data and when filters are applied */}
-          {!cruiseLinesLoading && !shipsLoading && (!!searchQuery?.trim() || !!selectedShipId || !!selectedCruiseLine) && (
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-teal-600">
-                  Possible friends ({filteredCrew.length})
-                </h2>
-                <div className="text-sm text-gray-500">
-                  {allCrew.length} total loaded
+          {!cruiseLinesLoading &&
+            !shipsLoading &&
+            (!!searchQuery?.trim() ||
+              !!selectedShipId ||
+              !!selectedCruiseLine || !!selectedRole) && (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-teal-600">
+                    Possible friends ({filteredCrew.length})
+                  </h2>
+                  <div className="text-sm text-gray-500">
+                    {allCrew.length} total loaded
+                  </div>
                 </div>
-              </div>
 
-              {filteredCrew.length === 0 ? (
+                {filteredCrew.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg
+                        className="h-8 w-8 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-gray-500 text-base">
+                      {searchQuery || selectedCruiseLine || selectedShip || selectedRole
+                        ? "No matching results found"
+                        : "Start searching to find your friends"}
+                    </p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      {searchQuery || selectedCruiseLine || selectedShip || selectedRole
+                        ? "Try adjusting your search or filters"
+                        : "Use the search bar or filters above to discover crew members"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 sm:space-y-4">
+                    {filteredCrew.map((member: any) => (
+                      <div
+                        key={member.id}
+                        className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:border-teal-300 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                          {/* Avatar and Info */}
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            {/* Avatar */}
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden flex-shrink-0">
+                              <img
+                                src={getProfilePhotoUrl(member.profilePhoto)}
+                                alt={member.displayName}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to letter avatar if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `
+                                                                    <div class="w-full h-full bg-teal-500 flex items-center justify-center">
+                                                                        <span class="text-white font-bold text-sm sm:text-lg">${member.displayName.charAt(
+                                                                          0
+                                                                        )}</span>
+                                                                    </div>
+                                                                `;
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            {/* Member Info */}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                                {member.displayName}
+                              </h3>
+                              <p className="text-xs sm:text-sm text-gray-600 truncate">
+                                {getRoleName(member.roleId) || "Crew Member"}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {getDepartmentName(member.departmentId)} •{" "}
+                                {getShipName(member.currentShipId)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex space-x-2 sm:flex-shrink-0">
+                            {(() => {
+                              const status = getConnectionStatus(member.id);
+
+                              if (status === "connected") {
+                                return (
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() =>
+                                        handleStartChat(
+                                          member.id,
+                                          member.displayName
+                                        )
+                                      }
+                                      disabled={loadingStates[member.id]}
+                                      className="flex-1 sm:flex-none px-3 py-2 bg-blue-500 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                      {loadingStates[member.id]
+                                        ? "Starting..."
+                                        : "Start Chat"}
+                                    </button>
+                                    <button
+                                      disabled
+                                      className="flex-1 sm:flex-none px-3 py-2 bg-gray-400 text-white text-xs sm:text-sm font-medium rounded-lg cursor-not-allowed transition-colors"
+                                    >
+                                      Connected
+                                    </button>
+                                  </div>
+                                );
+                              } else if (status === "pending") {
+                                return (
+                                  <button
+                                    disabled
+                                    className="flex-1 sm:flex-none px-3 py-2 bg-yellow-500 text-white text-xs sm:text-sm font-medium rounded-lg cursor-not-allowed transition-colors"
+                                  >
+                                    Pending
+                                  </button>
+                                );
+                              } else {
+                                return (
+                                  <button
+                                    onClick={() =>
+                                      handleConnect(
+                                        member.id,
+                                        member.displayName
+                                      )
+                                    }
+                                    disabled={loadingStates[member.id]}
+                                    className="flex-1 sm:flex-none px-3 py-2 bg-[#069B93] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-[#058a7a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                  >
+                                    {loadingStates[member.id]
+                                      ? "Sending..."
+                                      : "Connect"}
+                                  </button>
+                                );
+                              }
+                            })()}
+                            <button
+                              onClick={() => handleViewProfile(member.id)}
+                              className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-lg hover:border-[#069B93] hover:text-[#069B93] hover:bg-[#069B93]/5 transition-colors font-medium"
+                            >
+                              View Profile
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Infinite scroll loading indicator */}
+                    {isFetchingNextPage && (
+                      <div className="flex justify-center py-4">
+                        <div className="flex items-center space-x-2 text-teal-600">
+                          <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm font-medium">
+                            Loading more friends...
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Infinite scroll trigger */}
+                    <div ref={observerRef} className="h-4"></div>
+                  </div>
+                )}
+              </div>
+            )}
+
+          {/* Message when no filters are applied */}
+          {!cruiseLinesLoading &&
+            !shipsLoading &&
+            !(
+              !!searchQuery?.trim() ||
+              !!selectedShipId ||
+              !!selectedCruiseLine || !!selectedRole
+            ) && (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg
@@ -661,186 +932,23 @@ export const ExploreShips = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-base">
-                    {searchQuery || selectedCruiseLine || selectedShip
-                      ? "No matching results found"
-                      : "Start searching to find your friends"}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Ready to find your friends?
+                  </h3>
+                  <p className="text-gray-500 text-base mb-1">
+                    Start by searching for a name or selecting a filter above
                   </p>
-                  <p className="text-gray-400 text-sm mt-1">
-                    {searchQuery || selectedCruiseLine || selectedShip
-                      ? "Try adjusting your search or filters"
-                      : "Use the search bar or filters above to discover crew members"}
+                  <p className="text-gray-400 text-sm">
+                    Use the search bar, cruise line, or ship dropdown to
+                    discover crew members
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-3 sm:space-y-4">
-                  {filteredCrew.map((member: any) => (
-                    <div
-                      key={member.id}
-                      className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:border-teal-300 transition-colors"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                        {/* Avatar and Info */}
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                          {/* Avatar */}
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden flex-shrink-0">
-                            <img
-                              src={getProfilePhotoUrl(member.profilePhoto)}
-                              alt={member.displayName}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Fallback to letter avatar if image fails to load
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = "none";
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `
-                                                                    <div class="w-full h-full bg-teal-500 flex items-center justify-center">
-                                                                        <span class="text-white font-bold text-sm sm:text-lg">${member.displayName.charAt(
-                                                                          0
-                                                                        )}</span>
-                                                                    </div>
-                                                                `;
-                                }
-                              }}
-                            />
-                          </div>
-
-                          {/* Member Info */}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                              {member.displayName}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-gray-600 truncate">
-                              {getRoleName(member.roleId) || "Crew Member"}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {getDepartmentName(member.departmentId)} •{" "}
-                              {getShipName(member.currentShipId)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex space-x-2 sm:flex-shrink-0">
-                          {(() => {
-                            const status = getConnectionStatus(member.id);
-
-                            if (status === "connected") {
-                              return (
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() =>
-                                      handleStartChat(
-                                        member.id,
-                                        member.displayName
-                                      )
-                                    }
-                                    disabled={loadingStates[member.id]}
-                                    className="flex-1 sm:flex-none px-3 py-2 bg-blue-500 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                  >
-                                    {loadingStates[member.id]
-                                      ? "Starting..."
-                                      : "Start Chat"}
-                                  </button>
-                                  <button
-                                    disabled
-                                    className="flex-1 sm:flex-none px-3 py-2 bg-gray-400 text-white text-xs sm:text-sm font-medium rounded-lg cursor-not-allowed transition-colors"
-                                  >
-                                    Connected
-                                  </button>
-                                </div>
-                              );
-                            } else if (status === "pending") {
-                              return (
-                                <button
-                                  disabled
-                                  className="flex-1 sm:flex-none px-3 py-2 bg-yellow-500 text-white text-xs sm:text-sm font-medium rounded-lg cursor-not-allowed transition-colors"
-                                >
-                                  Pending
-                                </button>
-                              );
-                            } else {
-                              return (
-                                <button
-                                  onClick={() =>
-                                    handleConnect(member.id, member.displayName)
-                                  }
-                                  disabled={loadingStates[member.id]}
-                                  className="flex-1 sm:flex-none px-3 py-2 bg-[#069B93] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-[#058a7a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                  {loadingStates[member.id]
-                                    ? "Sending..."
-                                    : "Connect"}
-                                </button>
-                              );
-                            }
-                          })()}
-                          <button
-                            onClick={() => handleViewProfile(member.id)}
-                            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-lg hover:border-[#069B93] hover:text-[#069B93] hover:bg-[#069B93]/5 transition-colors font-medium"
-                          >
-                            View Profile
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Infinite scroll loading indicator */}
-                  {isFetchingNextPage && (
-                    <div className="flex justify-center py-4">
-                      <div className="flex items-center space-x-2 text-teal-600">
-                        <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-sm font-medium">
-                          Loading more friends...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Infinite scroll trigger */}
-                  <div ref={observerRef} className="h-4"></div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Message when no filters are applied */}
-          {!cruiseLinesLoading && !shipsLoading && !(!!searchQuery?.trim() || !!selectedShipId || !!selectedCruiseLine) && (
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="h-8 w-8 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Ready to find your friends?
-                </h3>
-                <p className="text-gray-500 text-base mb-1">
-                  Start by searching for a name or selecting a filter above
-                </p>
-                <p className="text-gray-400 text-sm">
-                  Use the search bar, cruise line, or ship dropdown to discover crew members
-                </p>
               </div>
-            </div>
-          )}
+            )}
         </div>
       </div>
     </DashboardLayout>

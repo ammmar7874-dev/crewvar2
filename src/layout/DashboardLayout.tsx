@@ -91,14 +91,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     // This will be used for confirming ship assignments in the future
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden max-w-[100vw]">
             {/* Internal App Bar */}
             <AppBar
                 onToggleSidebar={toggleSidebar}
                 setShowCheckInDialog={setShowCheckInDialog}
             />
 
-            <div className="flex">
+            <div className="flex w-full max-w-[100vw] overflow-x-hidden">
                 {/* Internal Sidebar - Hidden on desktop, shown on mobile */}
                 <div className="lg:hidden">
                     <DashboardSidebar
@@ -109,9 +109,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 flex flex-col min-h-screen">
+                <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
                     {/* Page Content */}
-                    <div className="flex-1 p-3">
+                    <div className="flex-1 p-3 overflow-x-hidden">
                         {children}
                     </div>
 

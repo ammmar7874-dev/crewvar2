@@ -11,15 +11,45 @@ import {
   signOut,
   onAuthStateChanged,
   User,
-  sendEmailVerification,
+  // COMMENTED OUT FOR APK BUILD - Email verification disabled
+  // sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
   GoogleAuthProvider,
+  signInWithCredential,
   signInWithPopup,
+  setPersistence,
+  browserLocalPersistence,
   // UserCredential type available but not used in current implementation
 } from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { signInWithCustomToken, getAuth } from "firebase/auth";
 import { auth, db } from "./config";
+
+// APK BUILD - Set Firebase auth persistence based on platform
+const setAuthPersistence = async () => {
+  try {
+    // Check if we're in a Capacitor environment (APK)
+    const isCapacitor = (window as any).Capacitor;
+
+    if (isCapacitor) {
+      // For APK builds, use session persistence and handle storage manually
+      console.log(
+        "🔧 APK Build detected - Using session persistence with custom storage"
+      );
+      await setPersistence(auth, browserLocalPersistence);
+    } else {
+      // For web builds, use local persistence
+      console.log("🌐 Web Build detected - Using local persistence");
+      await setPersistence(auth, browserLocalPersistence);
+    }
+  } catch (error) {
+    console.error("Error setting auth persistence:", error);
+  }
+};
+
+setAuthPersistence();
 // UserProfile is defined locally in this file
 
 // Re-export auth for convenience
@@ -131,27 +161,30 @@ export const signUpWithEmail = async (
     // Update Firebase Auth profile
     await updateProfile(user, { displayName });
 
+    // COMMENTED OUT FOR APK BUILD - Email verification disabled
     // Send email verification with custom action URL
-    const actionCodeSettings = {
-      url: `${window.location.origin}/auth/verification-pending`,
-      handleCodeInApp: false,
-    };
+    // Use web URL for cross-device compatibility
+    // The web page will detect if it's opened in the app and redirect accordingly
+    // const actionCodeSettings = {
+    //   url: `${window.location.origin}/auth/verification-pending`,
+    //   handleCodeInApp: false, // Always use web for cross-device compatibility
+    // };
 
-    console.log(
-      "🔍 Sending email verification with settings:",
-      actionCodeSettings
-    );
-    console.log("🔍 Current origin:", window.location.origin);
+    // console.log(
+    //   "🔍 Sending email verification with settings:",
+    //   actionCodeSettings
+    // );
+    // console.log("🔍 Current origin:", window.location.origin);
 
-    await sendEmailVerification(user, actionCodeSettings);
-    console.log("✅ Email verification sent successfully");
+    // await sendEmailVerification(user, actionCodeSettings);
+    // console.log("✅ Email verification sent successfully");
 
     // Create user document in Firestore
     const userData: Partial<UserProfile> = {
       id: user.uid,
       email: user.email!,
       displayName,
-      isEmailVerified: false,
+      isEmailVerified: false, // APK BUILD - Keep false for proper flow
       isActive: true,
       isAdmin: false,
       isOnline: true,
@@ -179,6 +212,10 @@ export const signUpWithEmail = async (
 
     await setDoc(doc(db, "users", user.uid), cleanUserData);
 
+    // APK BUILD - Sign out user immediately after signup to prevent auto-login
+    await signOut(auth);
+    console.log("✅ User signed out after signup");
+
     return user;
   } catch (error) {
     throw error;
@@ -186,26 +223,31 @@ export const signUpWithEmail = async (
 };
 
 /**
- * Sign in with Google OAuth
+ * Sign in with Google OAuth using webview implementation
+ * This function is called by the webview component after successful OAuth
  *
+ * @param idToken - Google ID token from OAuth flow
+ * @param accessToken - Google access token from OAuth flow
  * @returns Promise resolving to the authenticated user
  * @throws Firebase auth error if sign-in fails
  */
-export const signInWithGoogle = async (): Promise<User> => {
+// Google authentication via OAuth tokens (used by WebView/deep link flow)
+export const signInWithGoogleTokens = async (
+  idToken: string,
+  accessToken: string
+): Promise<User> => {
   try {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credential(idToken, accessToken);
+    const result = await signInWithCredential(auth, credential);
     const user = result.user;
 
-    // Check if user document exists
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    console.log("userDoc", userDoc);
-
-    if (!userDoc.exists()) {
-      // Create user document for new Google user
+    // Ensure user document exists
+    const userRefDoc = doc(db, "users", user.uid);
+    const existing = await (await import("firebase/firestore")).getDoc(userRefDoc);
+    if (!existing.exists()) {
       const userData: Partial<UserProfile> = {
         id: user.uid,
-        email: user.email!,
+        email: user.email || "",
         displayName: user.displayName || "",
         isEmailVerified: true,
         isActive: true,
@@ -214,29 +256,17 @@ export const signInWithGoogle = async (): Promise<User> => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-
-      // Only add profilePhoto if it exists
-      if (user.photoURL) {
-        userData.profilePhoto = user.photoURL;
-      }
-
-      // Filter out undefined, null, and empty string values
+      if (user.photoURL) userData.profilePhoto = user.photoURL;
       const cleanUserData = Object.fromEntries(
-        Object.entries(userData).filter(
-          ([_, value]) => value !== undefined && value !== "" && value !== null
-        )
+        Object.entries(userData).filter(([, v]) => v !== undefined && v !== null && v !== "")
       );
-
-      await setDoc(doc(db, "users", user.uid), cleanUserData);
+      await setDoc(userRefDoc, cleanUserData);
     }
 
-    const userRef = doc(db, "users", user.uid);
-    await updateDoc(userRef, {
-      isOnline: true,
-      updatedAt: new Date(),
-    });
+    await updateDoc(userRefDoc, { isOnline: true, updatedAt: new Date() });
     return user;
   } catch (error) {
+    console.error("Google authentication error:", error);
     throw error;
   }
 };
@@ -293,4 +323,54 @@ export const updateUserProfile = async (
   } catch (error) {
     throw error;
   }
+};
+
+export const requestEmailOtp = async (email: string): Promise<void> => {
+  const functions = getFunctions();
+  const callable = httpsCallable(functions, "requestOtp");
+  await callable({ email });
+};
+
+export const verifyEmailOtpAndLogin = async (
+  email: string,
+  code: string
+): Promise<void> => {
+  const functions = getFunctions();
+  const callable = httpsCallable(functions, "verifyOtp");
+  const res: any = await callable({ email, code });
+  const token = res?.data?.token;
+  if (!token) {
+    throw new Error("No token returned");
+  }
+  const a = getAuth();
+  await signInWithCustomToken(a, token);
+};
+
+export const signInWithGooglePopup = async (): Promise<User> => {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+  const userRefDoc = doc(db, "users", user.uid);
+  const existing = await getDoc(userRefDoc);
+  if (!existing.exists()) {
+    const userData: Partial<UserProfile> = {
+      id: user.uid,
+      email: user.email || "",
+      displayName: user.displayName || "",
+      isEmailVerified: true,
+      isActive: true,
+      isAdmin: false,
+      isOnline: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    if (user.photoURL) (userData as any).profilePhoto = user.photoURL;
+    const cleanUserData = Object.fromEntries(
+      Object.entries(userData).filter(([, v]) => v !== undefined && v !== null && v !== "")
+    );
+    await setDoc(userRefDoc, cleanUserData);
+  } else {
+    await updateDoc(userRefDoc, { updatedAt: new Date(), isOnline: true });
+  }
+  return user;
 };

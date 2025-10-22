@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1022590083211",
+    "project_id": "crewvar-75c6f",
+    "storage_bucket": "crewvar-75c6f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1022590083211:android:cdb89fa3a4a598a3c6348e",
+        "android_client_info": {
+          "package_name": "com.crewvar.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1022590083211-bgo955fc9sdia6v57k2n89cje1m6a10s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.crewvar.app",
+            "certificate_hash": "2d9f9349140fa563c8102925fb3a45e1d3027828"
+          }
+        },
+        {
+          "client_id": "1022590083211-v161e3ces8g76aj4gsf69psbm1ugsuu7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEgUzBwOLSLXo9k5WCrmwg_g94Q7jZoPM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1022590083211-v161e3ces8g76aj4gsf69psbm1ugsuu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

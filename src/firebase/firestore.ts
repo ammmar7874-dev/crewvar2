@@ -676,19 +676,53 @@ export const deleteNotification = async (
   }
 };
 
+export const savePushToken = async (
+  userId: string,
+  token: string,
+  platform?: string
+): Promise<void> => {
+  try {
+    const tokenRef = doc(db, "pushTokens", token);
+    await setDoc(
+      tokenRef,
+      {
+        userId,
+        token,
+        platform: platform || "native",
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("Error saving push token:", error);
+    throw error;
+  }
+};
+
 // User Profile Functions
 
 // Get user profile by ID
 export const getUserProfile = async (userId: string) => {
   try {
+    console.log("🔍 Fetching user profile for userId:", userId);
     const userDoc = await getDoc(doc(db, "users", userId));
     if (userDoc.exists()) {
       const userData = userDoc.data();
+      console.log("✅ User profile found:", { id: userDoc.id, ...userData });
       return { id: userDoc.id, ...userData };
     }
+    console.log("❌ User profile not found for userId:", userId);
     throw new Error("User profile not found");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching user profile:", error);
+    // Provide more specific error information
+    if (error.code) {
+      console.error("Firebase error code:", error.code);
+    }
+    if (error.message) {
+      console.error("Error message:", error.message);
+    }
     throw error;
   }
 };
@@ -696,6 +730,12 @@ export const getUserProfile = async (userId: string) => {
 // Create user profile (id is the auth uid)
 export const createUserProfile = async (userId: string, profileData: any) => {
   try {
+    console.log(
+      "🔍 Creating user profile for userId:",
+      userId,
+      "with data:",
+      profileData
+    );
     const userRef = doc(db, "users", userId);
 
     // Remove undefined/null/empty string values to avoid Firestore errors
@@ -713,10 +753,19 @@ export const createUserProfile = async (userId: string, profileData: any) => {
       updatedAt: serverTimestamp(),
     };
 
+    console.log("📝 Writing user profile data:", dataToWrite);
     await setDoc(userRef, dataToWrite);
+    console.log("✅ User profile created successfully");
     return { id: userId, ...dataToWrite };
-  } catch (error) {
-    console.error("Error creating user profile:", error);
+  } catch (error: any) {
+    console.error("❌ Error creating user profile:", error);
+    // Provide more specific error information
+    if (error.code) {
+      console.error("Firebase error code:", error.code);
+    }
+    if (error.message) {
+      console.error("Error message:", error.message);
+    }
     throw error;
   }
 };
@@ -1542,6 +1591,35 @@ export const getShips = async (): Promise<Ship[]> => {
   }
 };
 
+// Get ships by cruise line
+export const getShipsByCruiseLine = async (
+  cruiseLineId: string
+): Promise<Ship[]> => {
+  try {
+    const shipsRef = collection(db, "ships");
+    const q = query(
+      shipsRef,
+      where("cruiseLineId", "==", cruiseLineId)
+      // Removed orderBy to avoid composite index requirement
+    );
+    const querySnapshot = await getDocs(q);
+
+    const ships = querySnapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        } as Ship)
+    );
+
+    // Sort client-side instead
+    return ships.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching ships by cruise line:", error);
+    throw error;
+  }
+};
+
 // Add new ship
 export const addShip = async (shipData: {
   name: string;
@@ -2343,6 +2421,7 @@ export const getCrewMembers = async (
   params: {
     cruiseLineId?: string;
     shipId?: string;
+    roleId?: string;    
     page?: number;
     limit?: number;
     currentUserId?: string;
@@ -2395,6 +2474,11 @@ export const getCrewMembers = async (
     // Apply client-side filtering for ship
     if (shipId) {
       crew = crew.filter((member) => (member as any).currentShipId === shipId);
+    }
+
+    // Apply client-side filtering for role
+    if (params.roleId) {
+      crew = crew.filter((member) => (member as any).roleId === params.roleId);
     }
 
     crew = crew.filter((member) => !(member as any).isAdmin);
@@ -2848,7 +2932,7 @@ export const clearLiveNotificationsForRoom = async (
 export const clearAllNotifications = async (userId: string) => {
   try {
     console.log("🗑️ Clearing all live notifications for user:", userId);
-    
+
     const notificationsRef = collection(db, "liveNotifications");
     const q = query(notificationsRef, where("userId", "==", userId));
     const snapshot = await getDocs(q);
@@ -2875,7 +2959,7 @@ export const clearAllNotifications = async (userId: string) => {
 export const clearAllLegacyNotifications = async (userId: string) => {
   try {
     console.log("🗑️ Clearing all legacy notifications for user:", userId);
-    
+
     const notificationsRef = collection(db, "notifications");
     const q = query(notificationsRef, where("userId", "==", userId));
     const snapshot = await getDocs(q);
@@ -3519,7 +3603,7 @@ export const cleanupExpiredPortLinks = async (): Promise<void> => {
     });
 
     await batch.commit();
-    console.log(`🧹 Cleaned up ${expiredLinks.size} expired port links`);     
+    console.log(`🧹 Cleaned up ${expiredLinks.size} expired port links`);
   } catch (error) {
     console.error("Error cleaning up expired port links:", error);
   }
@@ -3528,12 +3612,12 @@ export const cleanupExpiredPortLinks = async (): Promise<void> => {
 // Database cleanup functions for admin use
 export const cleanupAllDepartments = async (): Promise<number> => {
   try {
-    console.log('🧹 Starting cleanup of all departments...');
-    const departmentsRef = collection(db, 'departments');
+    console.log("🧹 Starting cleanup of all departments...");
+    const departmentsRef = collection(db, "departments");
     const snapshot = await getDocs(departmentsRef);
-    
+
     if (snapshot.docs.length === 0) {
-      console.log('ℹ️ No departments to clean up');
+      console.log("ℹ️ No departments to clean up");
       return 0;
     }
 
@@ -3546,19 +3630,19 @@ export const cleanupAllDepartments = async (): Promise<number> => {
     console.log(`✅ Cleaned up ${snapshot.docs.length} departments`);
     return snapshot.docs.length;
   } catch (error) {
-    console.error('❌ Error cleaning up departments:', error);
+    console.error("❌ Error cleaning up departments:", error);
     throw error;
   }
 };
 
 export const cleanupAllRoles = async (): Promise<number> => {
   try {
-    console.log('🧹 Starting cleanup of all roles...');
-    const rolesRef = collection(db, 'roles');
+    console.log("🧹 Starting cleanup of all roles...");
+    const rolesRef = collection(db, "roles");
     const snapshot = await getDocs(rolesRef);
-    
+
     if (snapshot.docs.length === 0) {
-      console.log('ℹ️ No roles to clean up');
+      console.log("ℹ️ No roles to clean up");
       return 0;
     }
 
@@ -3571,25 +3655,30 @@ export const cleanupAllRoles = async (): Promise<number> => {
     console.log(`✅ Cleaned up ${snapshot.docs.length} roles`);
     return snapshot.docs.length;
   } catch (error) {
-    console.error('❌ Error cleaning up roles:', error);
+    console.error("❌ Error cleaning up roles:", error);
     throw error;
   }
 };
 
-export const cleanupDepartmentsAndRoles = async (): Promise<{ departments: number; roles: number }> => {
+export const cleanupDepartmentsAndRoles = async (): Promise<{
+  departments: number;
+  roles: number;
+}> => {
   try {
-    console.log('🧹 Starting complete cleanup of departments and roles...');
-    
+    console.log("🧹 Starting complete cleanup of departments and roles...");
+
     // Clean up roles first (they reference departments)
     const rolesCount = await cleanupAllRoles();
-    
+
     // Then clean up departments
     const departmentsCount = await cleanupAllDepartments();
-    
-    console.log(`✅ Complete cleanup finished: ${departmentsCount} departments, ${rolesCount} roles`);
+
+    console.log(
+      `✅ Complete cleanup finished: ${departmentsCount} departments, ${rolesCount} roles`
+    );
     return { departments: departmentsCount, roles: rolesCount };
   } catch (error) {
-    console.error('❌ Error during complete cleanup:', error);
+    console.error("❌ Error during complete cleanup:", error);
     throw error;
   }
 };
